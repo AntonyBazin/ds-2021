@@ -1,0 +1,142 @@
+---
+title: "Decision Trees"
+author: "Anton Bazin"
+date: "21 12 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Built with R `r getRversion()`.
+
+```{r}
+library(rpart)
+library(ROCR)
+library(rpart.plot)
+```
+
+
+
+```{r}
+survey <- read.csv('survey.csv', sep = ',',header = TRUE)
+summary(survey)
+head(survey)
+```
+
+```{r}
+train <- survey[1:600,] # 750*0.8
+test <- survey[601:750,]
+head(train)
+summary(train)
+```
+
+
+```{r}
+tr <- rpart(MYDEPV ~ Price + Income + Age, method='class',
+data=train, control=list(xval=0), parms=list(split='information'))
+printcp(tr)
+rpart.plot(tr)
+rpart.plot(tr, type=4, extra=1)
+```
+
+
+
+Train data:
+```{r}
+pred1 = predict(tr, train, type='class')
+cm <- table(actual=train$MYDEPV, predicted = pred1)
+cm
+misclass11 <- 1 - cm[1,1]/sum(cm[1,]) # 0 misclass
+misclass11
+
+misclass12 <- 1 - cm[2,2]/sum(cm[2,]) # 1 misclass, 19/260
+misclass12
+# Total
+misclasstot1 <- 1 - sum(diag(cm))/sum(cm)
+misclasstot1
+```
+
+```{r}
+predObj = prediction(as.numeric(pred1), train$MYDEPV)
+rocObj = performance(predObj, measure='tpr', x.measure='fpr')
+aucObj = performance(predObj, measure='auc')
+auc = aucObj@y.values[[1]]
+plot(rocObj, main = paste('Area under the curve:', auc))
+```
+
+
+
+
+Test Data:
+```{r}
+pred2 = predict(tr, test, type='class')
+cm2 <- table(actual=test$MYDEPV, predicted=pred2)
+cm2
+misclass21 <- 1 - cm2[1,1]/sum(cm2[1,]) # 0 misclass
+misclass21
+
+misclass22 <- 1 - cm2[2,2]/sum(cm2[2,]) # 1 misclass
+misclass22
+# Total
+misclasstot2 <- 1 - sum(diag(cm2))/sum(cm2)
+misclasstot2
+```
+
+
+```{r}
+predObj2 = prediction(as.numeric(pred2), test$MYDEPV)
+rocObj2 = performance(predObj2, measure='tpr', x.measure='fpr')
+aucObj2 = performance(predObj2, measure='auc')
+auc = aucObj2@y.values[[1]]
+plot(rocObj2, main = paste('Area under the curve:', auc))
+```
+
+
+
+```{r}
+gini <- rpart(MYDEPV ~ Price + Income + Age, method='class',
+data=train, parms=list(split='gini'))
+printcp(gini)
+rpart.plot(gini)
+rpart.plot(tr) # diff - variable importance
+```
+
+
+```{r}
+prune_gini1 = prune(gini, cp = 0.1) # cp - Complexity parameter to which the rpart object will be trimmed, 0.1=>2
+prune_gini2 = prune(gini, cp = 0.011538) # 3 -> 0.011538
+rpart.plot(prune_gini1, type=4, extra=1)
+rpart.plot(prune_gini2, type=4, extra=1)
+rpart.plot(gini, type=4, extra=1)
+```
+
+```{r}
+pred3 = predict(prune_gini2, test, type='class')
+cm3 <- table(actual=test$MYDEPV, predicted=pred3)
+cm3
+misclass31 <- 1 - cm3[1,1]/sum(cm3[1,]) # 0 misclass
+misclass31
+
+misclass32 <- 1 - cm3[2,2]/sum(cm3[2,]) # 1 misclass
+misclass32
+# Total
+misclasstot3 <- 1 - sum(diag(cm3))/sum(cm3)
+misclasstot3
+```
+
+```{r}
+predObj3 = prediction(as.numeric(pred3), test$MYDEPV)
+rocObj3 = performance(predObj3, measure='tpr', x.measure='fpr')
+aucObj3 = performance(predObj3, measure='auc')
+auc = aucObj3@y.values[[1]]
+plot(rocObj3, main = paste('Area under the curve:', auc))
+```
+
+
+
+
+
+
+

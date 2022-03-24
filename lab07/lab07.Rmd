@@ -1,0 +1,131 @@
+---
+title: "Logistic Regression"
+author: "Anton Bazin"
+date: "15 12 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ROCR)
+```
+
+
+Prepare data
+```{r Preparing data}
+Mydata <- read.csv('survey.csv', header=TRUE, sep=',')
+table(Mydata$MYDEPV)
+with(Mydata, table(Price,MYDEPV))#table of entry count per price and mydepv
+summary(Mydata$Age)
+cor.mat <- cor(Mydata[,-1])
+cor.mat
+```
+Result - rather low cor values, suitable for regression analysis
+```{r}
+Mydata['price10'] <- as.integer(Mydata$Price == 10)
+Mydata['price20'] <- as.integer(Mydata$Price == 20)
+Mydata['price30'] <- as.integer(Mydata$Price == 30)
+cor.mat <- cor(Mydata[,-1])
+cor.mat
+cor.mat <- cor(Mydata[,2:6])
+cor.mat
+```
+
+
+```{r Working with logistic regression model}
+# Make a logreg model
+mylogit <- glm(MYDEPV ~ Income + Age + as.factor(Price),
+              data = Mydata, family=binomial(link='logit'),
+              na.action = na.pass) # the same will happen if called with price10 + price20 + price30(==price20 + price30)
+summary(mylogit)
+```
+```{r}
+confint(mylogit)
+```
+
+
+
+
+```{r}
+# The multiplicative effect of each column on the odd-ratio of Purchase
+exp(mylogit$coefficients)
+```
+```{r}
+# R^2 analogue
+attributes(mylogit)  
+1-with(mylogit, deviance/null.deviance)
+```
+
+
+
+```{r}
+#plot(mylogit)
+```
+
+```{r}
+mylogit$coefficients
+```
+
+
+```{r}
+Mydata$pricefactor = relevel(as.factor(Mydata$Price), '30')
+mylogit2 <- glm(MYDEPV ~ Income + Age + pricefactor,
+              data = Mydata, family=binomial(link='logit'),
+              na.action = na.pass) # the same will happen if called with price10 + price20 + price30(==price20 + price30)
+#summary(mylogit)
+mylogit2$coefficients
+```
+
+
+```{r}
+mylogit$coefficients
+```
+```{r}
+pred = predict(mylogit, type='response')
+predObj = prediction(pred, Mydata$MYDEPV)
+#?performance
+```
+
+```{r}
+rocObj = performance(predObj, 
+measure='tpr', x.measure='fpr')  
+# creates ROC curve obj
+aucObj = performance(predObj, measure='auc')  # AUC_ROC object
+```
+
+
+```{r}
+auc = aucObj@y.values[[1]]  
+auc
+plot(rocObj, main = paste('Area under the curve:', auc))
+```
+
+Test the rule that the probability mass equals the counts.  Use the survey table and take the sums of the mydepv column and the prediction column.  Are the values equal? Excluding rounding errors, does probability mass equal count?
+
+```{r}
+# Adding a column calculating odds-ratio for each row
+Mydata['odds_ratio'] <- mylogit$coefficients[1] +
+  mylogit$coefficients[2]*Mydata$Income+
+  mylogit$coefficients[3]*Mydata$Age+
+  mylogit$coefficients[4]*Mydata$price20+
+  mylogit$coefficients[5]*Mydata$price30
+Mydata['pred'] <- predict(mylogit, type='response')
+# Checking if sum of probability mass equals sum of MYDEPV column
+sub_sums_depv_pred <- sum(Mydata$MYDEPV) - sum(Mydata$pred)
+sub_sums_depv_pred
+```
+Using the logistic model we have created, what is the likelihood of a person who is 25 years old with an income of $58,000 accepting an offer with a price of $20?
+```{r}
+Mydata <- read.csv('survey.csv', header=TRUE, sep=',')
+added_data <- data.frame(0, 20, 25, 58)
+names(added_data) <- colnames(Mydata)
+Mydata <- rbind(Mydata, added_data)
+#fix(Mydata)
+#fix(added_data)
+# Making prediction
+Mydata$PurchaseP<-predict(mylogit, newdata=Mydata,type='response')
+#fix(Mydata)
+```

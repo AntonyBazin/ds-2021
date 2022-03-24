@@ -1,0 +1,138 @@
+---
+title: "Association Rules"
+author: "Anton Bazin"
+date: "11/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Built with R `r getRversion()`.
+
+```{r}
+suppressMessages(library(arules))
+suppressMessages(library(arulesViz))
+suppressMessages(library(rJava))
+suppressMessages(library(rCBA))
+```
+
+```{r}
+data <- read.transactions('AssociationRules.csv')
+```
+
+Determine the most frequent item bought in the store.
+How many items were bought in the largest transaction?
+```{r}
+summary(data)
+#print(data@itemInfo)
+```
+Largest transactions - 25 elements (3)
+Data image, item frequency plot and table:
+```{r}
+#plot(image(data))
+itemFrequencyPlot(data)
+#print(itemFrequency(data))
+print(max(itemFrequency(data)))
+```
+
+```{r}
+rules <- apriori(data, parameter = list(supp = 0.01, conf = 0, target='rules'))
+```
+
+```{r}
+rules <- apriori(data, parameter = list(supp = 0.01, conf = 0.5, target='rules'))
+```
+'Good' rules: 
+* high support
+* high confidence
+* lift >= 1.5(or 2) (~1 => coincidence)
+```{r}
+plot(rules, shading='lift')
+```
+
+```{r}
+plot(rules, measure=c('support', 'lift'), shading='confidence')
+```
+Support-lift ~1/x
+
+
+Using the interaction tool for a scatter plot, identify 3 rules that appear in at least 10% of the transactions by coincidence.   
+```{r}
+plot(rules, engine='htmlwidget')
+```
+Answer: rules on the right (white)
+
+
+One downside to the Apriori algorithm, is that extraneous rules can be generated that are not particularly useful.  Identify where these rules are located on the graph.  Explain the relationship between the expected observation of these itemsets and the actual observation of the itemsets.  
+```{r}
+rules <- apriori(data, parameter = list(supp = 0.01, conf = 0.8, target='rules'))
+sorted_rules <- sort(rules, decreasing=TRUE, by='lift')
+#tail(sorted_rules, 10)
+inspect(tail(sorted_rules, 10))
+```
+
+
+Create a Matrix-based visualization of two measures with colored squares.  The two measures should compare confidence and lift (have recorded = FALSE).  Note that 4 interesting rules stand out on the graph.  
+```{r}
+plot(sorted_rules, method = 'matrix', engine = 'grid', shading = c('lift', 'confidence'),  recorded = FALSE)
+```
+
+```{r}
+rules <- apriori(data, parameter = list(supp = 0.01,
+                                        conf=0,                                                    target='rules'))
+sorted_rules <- sort(rules, decreasing=TRUE, by='lift')
+inspect(head(sorted_rules, 3, by='lift'))
+```
+
+
+Create a Graph-based visualization with items and rules as vertices. 
+```{r}
+plot(head(sorted_rules, 3, by='lift'), method='graph')
+```
+The more items in a rule(order), the less the support of the rule.
+
+```{r}
+plot(rules, measure=c('support', 'order'), shading='confidence')
+```
+~1/x
+
+```{r}
+training_set <- head(data, 8000)
+testing_set <- tail(data, 2000)
+rules_train <- apriori(training_set, parameter = list(supp=0.01,
+                                        conf=0,
+                                        target='rules'))
+rules_test <- apriori(testing_set, parameter = list(supp=0.01,
+                                        conf=0,                                 
+                                        target='rules'))
+```
+
+Inspect results in training and testing sets:
+descending=d, TRUE=T ^_^)
+```{r echo=F}
+sorted_train <- sort(rules_train, by='lift')
+inspect(head(sorted_train, 20))
+```
+```{r}
+sorted_test <- sort(rules_test, by='lift')
+inspect(head(sorted_test, 11))
+```
+
+```{r}
+int <- intersect(sorted_test, sorted_train)
+sorted_int <- sort(int, by='lift')
+inspect(head(sorted_int, 10))
+```
+
+
+```{r}
+#rules <- rCBA::fpgrowth(data, support=0.01, confidence=0, consequent='')
+#sorted_rules <- sort(rules, by='lift')
+#inspect(head(sorted_rules, 10))
+```
+
+
+
+

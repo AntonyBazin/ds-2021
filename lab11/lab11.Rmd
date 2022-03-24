@@ -1,0 +1,119 @@
+---
+title: "Text Analysis"
+author: "Anton Bazin"
+date: "25 12 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tm)
+library(wordcloud)
+library(dplyr)
+```
+
+20 news articles with additional meta information from the
+Reuters-21578 XML data set.
+All documents belong to the topic crude dealing with crude oil.
+```{r}
+data('crude')
+#crude[[2]]$content
+article  <- crude[2]
+```
+
+Create a word cloud of the 20 most frequent words in this article 
+(the 2nd article in the crude corpus).
+```{r}
+tdm <- TermDocumentMatrix(article)
+freqitems <- data.frame(findMostFreqTerms(tdm, 20))
+freqitems[2] <- rownames(freqitems)
+freqitems
+```
+
+```{r}
+set.seed(42)
+wordcloud(words=freqitems$V2, freq=freqitems$X144, min.freq=1,
+          max.words=20, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, 'Dark2'))
+```
+
+
+
+
+
+Again, create a word cloud of the 20 most frequent words in the article.
+But this time, remove all stop words, punctuations, and numbers.
+```{r}
+art <- article
+art <- tm_map(art, content_transformer(tolower))
+art <- tm_map(art, removeNumbers)
+art <- tm_map(art, removeWords, stopwords('english'))
+art <- tm_map(art, removePunctuation)
+
+
+tdm2 <- TermDocumentMatrix(art)
+tdmatr <- as.matrix(tdm2)
+freqitems2 <- data.frame(findMostFreqTerms(tdm2, 20))
+freqitems2[2] <- rownames(freqitems2)
+freqitems2
+```
+
+
+```{r}
+idf <- log(ncol(as.matrix(tdm2))/( 1 + rowSums(as.matrix(tdm2) != 0))) %>% diag()
+tfidf <- crossprod(as.matrix(tdm2), idf)
+colnames(tfidf) <- rownames(as.matrix(tdm2))
+
+set.seed(42)
+wordcloud(words=colnames(tfidf)[head(order(tfidf), 20)], 
+           freq=freqitems2$X144, min.freq=1,
+           max.words=40, random.order=FALSE, rot.per=0.35, 
+           colors=brewer.pal(8, 'Dark2'))
+```
+
+
+
+
+Create a word cloud of 20 words in this article with the highest TF-IDF values.
+```{r}
+idf <- log(ncol(as.matrix(tdm))/( 1 + rowSums(as.matrix(tdm) != 0))) %>% diag()
+tfidf <- crossprod(as.matrix(tdm), idf)
+colnames(tfidf) <- rownames(as.matrix(tdm))
+
+set.seed(42)
+wordcloud(words=colnames(tfidf)[head(order(tfidf), 20)], 
+           freq=freqitems$X144, min.freq=1,
+           max.words=40, random.order=FALSE, rot.per=0.35, 
+           colors=brewer.pal(8, 'Dark2'))
+```
+
+
+Create a word cloud of 20 words in this article with the highest TF-IDF values,
+removing all stop words, punctuations, and numbers.
+```{r}
+idf <- log(ncol(as.matrix(tdm2))/( 1 + rowSums(as.matrix(tdm2) != 0))) %>% diag()
+tfidf <- crossprod(as.matrix(tdm2), idf)
+colnames(tfidf) <- rownames(as.matrix(tdm2))
+
+set.seed(42)
+wordcloud(words=colnames(tfidf)[head(order(tfidf), 20)], 
+           freq=freqitems2$X144, min.freq=1,
+           max.words=40, random.order=FALSE, rot.per=0.35, 
+           colors=brewer.pal(8, 'Dark2'))
+```
+
+
+
+
+
+
+
+
+
+
+
+

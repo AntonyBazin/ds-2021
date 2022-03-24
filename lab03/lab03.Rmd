@@ -1,0 +1,78 @@
+---
+title: "Data Analysis in R"
+author: "Anton Bazin"
+date: "10/29/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+Built with R `r getRversion()`.
+
+32038 rows in source file
+
+Summary:
+```{r}
+data <- read.table("zipIncome.txt", sep="|", header=TRUE)
+colnames(data) <- c("zipCode", "income")
+summary(data)
+plot(data, main="Scatter plot", xlab="Code", ylab="Income, $", cex=0.7, col="#FF0000")
+```
+
+
+## Subset
+```{r}
+data.sub1 <- subset(data, income > 7000 & income < 200000)
+summary(data.sub1)
+```
+
+Subset Plot:
+```{r}
+plot(data.sub1, main="The subset plot", xlab="Code", ylab="Income, $", cex=0.7, col="#8F00FF", ylim=c(0, 250000))
+```
+
+Log-scale subset plot:
+
+```{r echo=FALSE}
+plot(data.sub1, main='The Log-scale subset plot', xlab='Code', ylab='Income, $', log='y', cex=0.7, col='#8F00FF')
+```
+
+
+## GGplot
+Amount of 0-income rows:
+`r sum(data[,2] == 0)`.
+Scatter plot:
+```{r}
+library(ggplot2)
+ggplot(data, aes(x = zipCode, y = income)) + geom_point(alpha=0.2, position='jitter') + scale_y_log10() + ggtitle('Scatter plot with ggplot2')
+```
+Box plot:
+```{r}
+data$zipCode = as.factor(data$zipCode)
+ggplot(data, aes(x = zipCode, y = income, fill=zipCode, color=zipCode)) + geom_boxplot(alpha=0.7) + ggtitle('Box plot with ggplot2')
+```
+
+
+## Basic Visualization
+```{r}
+boxplot(data$income[data$income > 7000 & data$income < 200000]~data$zipCode[data$income > 7000 & data$income < 200000], main='Average Household Income by Zip Code', xlab='Zip Codes', ylab='Income')
+```
+
+Log-Scale:
+```{r}
+boxplot(data$income[data$income > 7000 & data$income < 200000]~data$zipCode[data$income > 7000 & data$income < 200000], main='Average Household Income by Zip Code', xlab='Zip Codes', ylab='Income', log='y')
+```
+
+
+## GGplot2 Visualization
+Scatter Plot with Ggplot2:
+```{r}
+ggplot(data, aes(x = as.factor(zipCode), y = income)) + geom_point(alpha=0.2, position='jitter') + scale_y_log10() + ggtitle('Scatter plot with ggplot2')
+```
+## Checkboxes
+```{r}
+ggplot(data.sub1, aes(x = as.factor(zipCode), y = income)) + geom_point(aes(colour=factor(zipCode)), position="jitter", alpha=0.2) + geom_boxplot(alpha=0.2, outlier.size=-Inf) + ggtitle('Average Income by Zip Code') + labs(color="Region", x="Zip Code", y="Income", title="Average Income by Zip Code") + scale_y_log10()
+```

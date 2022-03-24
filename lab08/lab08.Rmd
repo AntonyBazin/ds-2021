@@ -1,0 +1,118 @@
+---
+title: "Naive Bayes"
+author: "Anton Bazin"
+date: "13 12 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(e1071)
+```
+
+
+```{r}
+df <- read.csv(file ='nbtrain.csv', header = TRUE, sep=',')
+train <- df[1:9010,]
+test <- df[9011:10010,]
+```
+
+
+Construct the Naïve Bayes classifier from the training data, according to the formula
+“income ~ age + sex + educ”.
+```{r}
+nb <- naiveBayes(as.factor(income) ~ age + sex + educ, train)
+nb
+# testing
+pred <- predict(nb, test)
+nbmatr <- table(actual=test$income, predicted = pred)
+nbmatr
+```
+
+
+Score the model with the testing data and create the model’s confusion matrix.  
+Also, calculate the overall, 10-50K, 50-80K, and GT 80K misclassification rates.
+Explain the variation in the model’s predictive power across income classes.
+```{r}
+# 10-50K
+misclass1 <- 1 - nbmatr[1,1]/sum(nbmatr[1,])
+misclass1
+# 50-80K
+misclass2 <- 1 - nbmatr[2,2]/sum(nbmatr[2,])
+misclass2
+# GT 80K
+misclass3 <- 1 - nbmatr[3,3]/sum(nbmatr[3,])
+misclass3
+# Total
+misclasstot <- 1 - sum(diag(nbmatr))/sum(nbmatr)
+misclasstot
+```
+
+
+Construct the classifier according to the formula “sex ~ age + educ + income”,
+and calculate the overall, female, and male misclassification rates.
+Explain the misclassification rates?
+```{r}
+nb2 <- naiveBayes(as.factor(sex) ~ age + income + educ, train)
+nb2
+
+pred2 <- predict(nb2, test)
+nbmatr2 <- table(actual=test$sex, predicted = pred2)
+nbmatr2
+```
+
+
+
+```{r}
+# F
+misclass12 <- 1 - nbmatr2[1,1]/sum(nbmatr2[1,])
+misclass12
+# M
+misclass22 <- 1 - nbmatr2[2,2]/sum(nbmatr2[2,])
+misclass22
+# Total
+misclasstot2 <- 1 - sum(diag(nbmatr2))/sum(nbmatr2)
+misclasstot2
+```
+
+
+Divide the training data into two partitions, according to sex, 
+and randomly select 3500 records from each partition. 
+Reconstruct the model from part (a) from these 7000 records.
+Provide the model’s a priori and conditional probabilities.
+Repeat step (b) 4 several times.
+What effect does the random selection of records have on the model’s performance?
+```{r}
+for (i in c(1, 2, 3, 4)){
+  print('')
+  print('')
+  print(paste('Iteration ', as.character(i), '--------------------------------------------------------'))
+  males <- train[train$sex == 'M',]
+  females <- train[train$sex == 'F',]
+  males <- males[sample(nrow(males), 3500),]
+  females <- females[sample(nrow(females), 3500),]
+  
+  mf <- rbind(males, females)
+  
+  nb3 <- naiveBayes(as.factor(sex) ~ age + income + educ, mf)
+  print(nb3)
+  pred3 <- predict(nb3, test)
+  
+  nbmatr3 <- table(actual=test$sex, predicted=pred3)
+  print(nbmatr3)
+  # M
+  nb3misclassf <- 1 - nbmatr3[1,1]/sum(nbmatr3[1,])
+  print(nb3misclassf)
+  # F
+  nb3misclassm <- 1 - nbmatr3[2,2]/sum(nbmatr3[2,])
+  print(nb3misclassm)
+  # M+F
+  nb3misclassmf <- 1 - sum(diag(nbmatr3))/sum(nbmatr3)
+  print(nb3misclassmf)
+}
+```
+
+

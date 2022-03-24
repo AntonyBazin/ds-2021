@@ -1,0 +1,239 @@
+---
+title: "K-Means Clustering"
+author: "Anton Bazin"
+date: "11/7/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Built with R `r getRversion()`.
+```{r echo=FALSE}
+suppressMessages(library(tidyverse))
+suppressMessages(library(maps))
+suppressMessages(library(factoextra))
+suppressMessages(library(dbscan))
+```
+
+## Preparation
+
+```{r}
+load('./income_elec_state.Rdata')
+summary(income_elec_state)
+plot(income_elec_state)
+```
+
+## Clustering basics
+
+```{r}
+for (i in c(1, 2, 3, 10)){
+  km <- kmeans(income_elec_state, i)
+  plot(income_elec_state, col=km$cluster, lwd=3, 
+       main=paste('K = ', as.character(i))) + points(km$centers, col=c(1:i), pch = 8)
+}
+```
+
+```{r echo=FALSE}
+#for (i in c(1, 2, 3)){
+#  set.seed(42) # this prevents randomization in cluster choices
+#  km <- kmeans(income_elec_state, 10)
+#  plot(income_elec_state, col=km$cluster, lwd=3)
+#}
+#set.seed(Sys.time())
+#km <- kmeans(income_elec_state, 10)
+#plot(income_elec_state, col=km$cluster, lwd=3)
+```
+
+
+## K estimation
+
+```{r}
+wss <- function(k) {
+  return(kmeans(income_elec_state, k)$tot.withinss)
+}
+k.values <- 1:10
+wss_values <- map_dbl(k.values, wss)
+plot(k.values, wss_values, type='b', pch = 19, frame = FALSE,
+     xlab="Number of clusters K", ylab="Total within-clusters sum of squares")
+```
+
+
+## To Log scale
+
+Data (normal scale):
+```{r}
+plot(income_elec_state)
+```
+
+Data(log scale):
+```{r}
+income_elec_state$income <- log(income_elec_state$income)
+income_elec_state$elec <- log(income_elec_state$elec)
+plot(income_elec_state)
+```
+
+```{r}
+for (i in c(1, 2, 6, 10)){
+  km <- kmeans(income_elec_state, i)
+  plot(income_elec_state, col=km$cluster, lwd=3, 
+       main=paste('K = ', as.character(i))) + points(km$centers, col=c(1:i), pch = 8)
+}
+```
+
+## K reevaluation
+```{r}
+wss_values <- map_dbl(k.values, wss)
+plot(k.values, wss_values, type='b', pch = 19, frame = FALSE, 
+     xlab="Number of clusters K", ylab="Total within-clusters sum of squares")
+```
+
+## Removing the Outlier
+```{r}
+which(income_elec_state$income == min(income_elec_state$income))
+income_elec_state = income_elec_state[-c(6),]
+plot(income_elec_state)
+```
+
+## K reevaluation, part 2
+
+```{r}
+wss_values <- map_dbl(k.values, wss)
+plot(k.values, wss_values, type='b', pch = 19, frame = FALSE,
+     xlab="Number of clusters K", ylab="Total within-clusters sum of squares")
+```
+
+## Maps and Code
+
+```{r}
+km <- kmeans(income_elec_state, 4)
+map_order <- c('AL', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL',
+               'GA', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME',
+               'MD', 'MA', 'MA', 'MA', 'MI', 'MI', 'MN', 'MS', 'MO',
+               'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NY', 'NY',
+               'NY', 'NC', 'NC', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA',
+               'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'VA',
+               'VA', 'WA', 'WA', 'WA', 'WA', 'WA', 'WV', 'WI', 'WY')
+
+map_color <- km$cluster[map_order]
+maps::map('state', col = map_color, fill=TRUE)
+```
+
+## Hierarchical clustering
+
+```{r}
+load('./income_elec_state.Rdata')
+dist_matrix <- dist(income_elec_state, method = 'euclidean')
+```
+Note: dist can use different methods, not limited to euclidian (as in kmeans)
+Height stands for calculated distance
+```{r}
+clusters <- hclust(dist_matrix, method='complete')
+plot(clusters)
+cut <- cutree(clusters, k = 4)
+table(cut)
+fviz_cluster(list(data = income_elec_state, cluster = cut))
+
+cut <- cutree(clusters, k = 5)
+fviz_cluster(list(data = income_elec_state, cluster = cut))
+```
+```{r}
+clusters <- hclust(dist_matrix, method = 'average')
+plot(as.dendrogram(clusters), xlab='Cities', ylab='Height', main='Cluster dendrogram') # or just plot(clusters)
+cut <- cutree(clusters, k = 5)
+fviz_cluster(list(data = income_elec_state, cluster = cut))
+```
+```{r}
+clusters <- hclust(dist_matrix, method = 'single')
+plot(clusters)
+cut <- cutree(clusters, k = 5)
+fviz_cluster(list(data = income_elec_state, cluster = cut))
+```
+```{r}
+clusters <- hclust(dist_matrix, method = 'median')
+plot(clusters)
+cut <- cutree(clusters, k = 5)
+fviz_cluster(list(data = income_elec_state, cluster = cut))
+```
+```{r}
+income_elec_state$income <- log(income_elec_state$income)
+income_elec_state$elec <- log(income_elec_state$elec)
+dist_matrix <- dist(income_elec_state, method = 'euclidean')
+clusters <- hclust(dist_matrix, method = 'complete')
+plot(clusters)
+cut <- cutree(clusters, k = 5)
+fviz_cluster(list(data = income_elec_state, cluster = cut))
+```
+```{r}
+income_elec_state = income_elec_state[-c(6),]
+plot(income_elec_state)
+dist_matrix <- dist(income_elec_state, method = 'euclidean')
+clusters <- hclust(dist_matrix, method = 'complete')
+plot(clusters)
+cut <- cutree(clusters, k = 5)
+fviz_cluster(list(data = income_elec_state, cluster = cut))
+```
+
+## DBSCAN
+
+```{r}
+load('./income_elec_state.Rdata')
+dist_matrix <- dist(income_elec_state, method = 'euclidean')
+```
+
+```{r}
+for (i in c(400, 500, 800, 1500)){
+  db <- dbscan(income_elec_state, eps=i, minPts = 4)
+  print(db)
+  plot(income_elec_state, col=db$cluster+1, 
+       main=paste('DBSCAN result with eps=', as.character(i)))
+}
+```
+```{r}
+for (i in c(400, 500, 800, 1500)){
+  db <- dbscan(income_elec_state, eps=i, minPts = 6)
+  print(db)
+  plot(income_elec_state, col=db$cluster+1, 
+       main=paste('DBSCAN result with eps=', as.character(i)))
+}
+```
+
+
+```{r}
+load('./income_elec_state.Rdata')
+income_elec_state$income <- log(income_elec_state$income)
+income_elec_state$elec <- log(income_elec_state$elec)
+for (i in c(.005, .05, .1, 1)){
+  db <- dbscan(income_elec_state, eps=i, minPts = 4)
+  print(db)
+  plot(income_elec_state, col=db$cluster+1, 
+       main=paste('DBSCAN result with eps=', as.character(i)))
+}
+```
+
+
+##HDBSCAN
+
+```{r}
+load('./income_elec_state.Rdata')
+hdb <- hdbscan(income_elec_state, minPts = 5)
+print(hdb)
+print(hdb$hc)
+plot(hdb)
+plot(income_elec_state, col=hdb$cluster+1)
+plot(hdb$hc, main='Hierarchy')        
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

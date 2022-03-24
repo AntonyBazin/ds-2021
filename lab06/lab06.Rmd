@@ -1,0 +1,124 @@
+---
+title: "Linear Regression"
+author: "Anton Bazin"
+date: "01 12 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(PerformanceAnalytics)
+```
+
+
+
+Load zeta dataset, and remove all  meanhouseholdincome duplicates (or more formally only females records should be in the dataset) that does not have any duplicate rows of data (done in homework 3.2). 
+```{r}
+data <- read.csv('zeta.csv')
+summary(data)
+no_dup <- data[!duplicated(data$meanhouseholdincome), ]
+summary(no_dup)
+print(unique(duplicated(no_dup$meanhouseholdincome)))
+```
+
+
+Remove the columns zcta and sex from the imported table.
+```{r}
+rm_cols <- within(no_dup, rm(zcta, sex))
+```
+
+
+
+Remove outliers by creating subsets of the original data
+```{r}
+df <- subset(rm_cols, meaneducation > 8 & meaneducation < 18 & 
+                   10000 < meanhouseholdincome & meanhouseholdincome < 200000 &
+                   0 < meanemployment & meanemployment < 3 &
+                   20 < meanage & meanage < 60)
+summary(df)
+```
+Create a variable called log_income = log10(meanhouseholdincome). 
+```{r}
+df$log_income <- log10(df$meanhouseholdincome)
+summary(df)
+```
+
+
+
+Rename the columns meanage, meaneducation, and meanemployment as age, education, and employment, respectively.
+```{r}
+colnames(df) <- c('X', 'age', 'education', 'employment', 'meanhouseholdincome', 'log_income')
+summary(df)
+rm(no_dup)
+rm(rm_cols)
+```
+
+
+## Linear Regression Analysis
+We will be analyzing this data with income as the dependent variable and the other columns as independent variables.  Create a scatter plot showing the effect age has on log_income and paste it here.  Do you see any linear relationship between the two variables?
+```{r}
+#plot(df$age, df$meanhouseholdincome, main='Scatter plot', xlab='Age', ylab='Income', cex=0.7)
+plot(df$age, df$log_income, main='Scatter plot', xlab='Age', ylab='Log Income', cex=0.7)
+```
+
+
+Create a linear regression model between log_income and age.  What is the interpretation of the t-value? What kind of t-value would indicate a significant coefficient?
+
+What is the interpretation of the R-squared value?  What kind of R-squared value would indicate a good fit?
+What is the interpretation of the F-statistic?  What kind of F-statistic indicates a strong linear regression model?
+View a detailed summary of the previous model.  What is the R-squared value?  Does this suggest that the model is a good fit? Why?
+```{r}
+model1 <- lm(df$log_income ~ df$age, data = df)
+summary(model1)
+summary(model1)$r.squared
+#cor.test(df$log_income, df$age)
+```
+
+
+
+Create a scatter plot showing the effect education has on log_income.  Do you see any linear relationship between the two variables?
+```{r}
+plot(df$education, df$log_income, main='Scatter plot', xlab='edu', ylab='Log Income', cex=0.7)
+```
+
+
+
+Analyze a detailed summary of a linear regression model between log_income and education.  What is the R-squared value?  Is the model a good fit?  Is it better than the previous model?
+```{r}
+model2 <- lm(df$log_income ~ df$education, data = df)
+summary(model2)
+```
+
+
+
+Analyze a detailed summary of a linear regression model between the dependent variable log_income, and the independent variables age, education, and employment.  Is this model a good fit?  Why?  What conclusions can be made about the different independent variables?
+
+Based on the coefficients of the multiple regression model, by what percentage would income increase/decrease for every unit of education completed, while all other independent variables remained constant?
++0.0920728
+Only method
+```{r}
+model3 <- lm(df$log_income ~ df$age + df$education + df$employment, data = df)
+summary(model3)
+chart.Correlation(df, histogram = TRUE, method = 'pearson')
+par(mfrow=c(2,2))
+plot(model3)
+```
+
+
+Create a graph that contains a y = x line and uses the multiple regression model to plot the predicted data points against the actual data points of the training set.  
+How well does the model predict across the various income ranges?
+
+```{r}
+predictions <- predict(model3)
+par(mfrow=c(1,1))
+plot(df$log_income, df$log_income, type = 'l', xlab = 'true income', ylab = 'predicted income', col='#FF0000')
+points(df$log_income, predictions)
+```
+
+
+
+

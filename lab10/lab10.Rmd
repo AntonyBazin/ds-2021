@@ -1,0 +1,169 @@
+---
+title: "Time Series - ARIMA"
+author: "Anton Bazin"
+date: "25 12 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Built with R `r getRversion()`.
+
+
+
+```{r}
+eps <- read.csv('jj.dat', header=FALSE)
+head(eps)
+```
+After obtaining a copy of the dataset, plot the quarterly EPS vs. time.  Describe any patterns that you observe.
+```{r}
+series <- ts(eps, start=1960, end=1980, frequency=4)
+plot(series)
+```
+
+
+In order to perform an ARIMA model, the time series will need to be transformed to remove any trend.
+
+Plot the difference of xt and xt-1, for all t > 0.
+- Has this difference adequately detrended the series? ---(No)
+- Does the variability of the EPS appear constant over time? ---No
+- Why does the constant variance matter? ---Model uses white noise
+```{r}
+dx1 <- tail(eps, -1) - head(eps, -1)
+dx1ts<- ts(dx1, start=1960, end=1980, freq=4)
+plot(dx1ts)
+summary(head(dx1, 42))  # looking at means - get a clue about trends
+summary(tail(dx1, 42))
+summary(dx1)
+```
+
+
+
+Plot the log10 of the quarterly EPS vs. time and plot the difference of
+log10(xt ) and log10(xt-1) for all t > 0.
+- Has this adequately detrended the series?
+- Has the variability of the differenced log10(EPS) become more constant?  
+```{r}
+log10eps <- log10(eps)
+log10ts <- ts(log10eps, start=1960, end=1980, freq=4)
+plot(log10ts, main='Log10TS')
+
+dxlog10 <- tail(log10eps, -1) - head(log10eps, -1)
+dxlog10ts<- ts(dxlog10, start=1960, end=1980, freq=4)
+plot(dxlog10ts, main='dxLog10ts')
+
+summary(head(dxlog10, 42))  # looking at means - get a clue about trends
+summary(tail(dxlog10, 42))
+summary(dxlog10)
+```
+
+
+
+Treating the differenced log10 of the EPS series as a stationary series,
+plot the ACF and PACF of this series.
+What possible ARIMA models would you consider and why?
+```{r}
+par(mfrow=c(2,1))  # plot together
+acf(dxlog10ts)
+pacf(dxlog10ts)
+```
+'Rule 6: If the PACF of the differenced series displays a sharp cutoff and/or
+the lag-1 autocorrelation is positive--i.e., 
+if the series appears slightly "underdifferenced"--then consider 
+adding an AR term to the model.'
+
+
+
+
+Run the proposed ARIMA models from part d and compare the results.
+Identify an appropriate model. Justify your choice.   
+```{r}
+arima1 <- arima(dxlog10ts, order=c(1, 0, 0))
+arima2 <- arima(dxlog10ts, order=c(2, 0, 0))
+arima3 <- arima(dxlog10ts, order=c(3, 0, 0))
+arima4 <- arima(dxlog10ts, order=c(4, 0, 0))  # best
+arima5 <- arima(dxlog10ts, order=c(5, 0, 0))
+arima6 <- arima(dxlog10ts, order=c(4, 0, 1))
+arima7 <- arima(dxlog10ts, order=c(5, 0, 1))
+AIC(arima1, arima2, arima3, arima4, arima5, arima6, arima7)
+arima4
+```
+
+Why is the choice of natural log or log base 10 in Problem 4.8 somewhat
+irrelevant to the transformation and the analysis?
+
+--- Not the best method to detrend. Might need to use linear or higher-order functions
+
+
+Why is the value of the ACF for lag 0 equal to one? 
+--- cor with itself = 1 (0th term == itself)
+
+
+
+Using arima.sim in R, simulate 10,000 points for AR(p) p = 1,2,3,4.
+Plot the simulated series, ACF and PACF.
+What pattern emerges between p and the plots?  
+```{r}
+ars <- arima.sim(n=10000, list(ar=c(-0.6873, -0.6129, -0.6340, 0.2704)))
+ts.plot(ars)
+par(mfrow=c(2,1))
+acf(ars)
+pacf(ars)
+
+ars <- arima.sim(n=10000, list(ar=c(-0.6873, -0.6129, -0.6340)))
+ts.plot(ars)
+par(mfrow=c(2,1))
+acf(ars)
+pacf(ars)
+
+ars <- arima.sim(n=10000, list(ar=c(-0.6873, -0.6129)))
+ts.plot(ars)
+par(mfrow=c(2,1))
+acf(ars)
+pacf(ars)
+
+ars <- arima.sim(n=10000, list(ar=c(-0.6873)))
+ts.plot(ars)
+par(mfrow=c(2,1))
+acf(ars)
+pacf(ars)
+```
+
+
+Using arima.sim in R, simulate 10,000 points for MA(p) p = 1,2,3,4.
+Plot the simulated series, ACF and PACF.
+What pattern emerges between p and the plots?
+```{r}
+arima8 <- arima(dxlog10ts, order=c(0, 0, 4))
+arima8
+```
+
+
+```{r}
+ars <- arima.sim(n=10000, list(ma=c(-0.6552, -0.1804, -0.4048, 0.7546)))
+ts.plot(ars)
+par(mfrow=c(2,1))
+acf(ars)
+pacf(ars)
+
+ars <- arima.sim(n=10000, list(ma=c(-0.6552, -0.180,4-0.4048)))
+ts.plot(ars)
+par(mfrow=c(2,1))
+acf(ars)
+pacf(ars)
+
+ars <- arima.sim(n=10000, list(ma=c(-0.6552, -0.1804)))
+ts.plot(ars)
+par(mfrow=c(2,1))
+acf(ars)
+pacf(ars)
+
+ars <- arima.sim(n=10000, list(ma=c(-0.6552)))
+ts.plot(ars)
+par(mfrow=c(2,1))
+acf(ars)
+pacf(ars)
+```
+
